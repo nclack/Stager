@@ -19,12 +19,122 @@
     </section>
 
     <section class="main-content">
-      <p>TEST</p>
+      <h3>
+<a id="image-registration-and-analysis-interface-stager" class="anchor" href="#image-registration-and-analysis-interface-stager" aria-hidden="true"><span class="octicon octicon-link"></span></a>Image Registration and Analysis Interface ‘Stager’</h3>
 
-<h3>
-<a id="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages" aria-hidden="true"><span class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+<h1>
+<a id="roi-selection" class="anchor" href="#roi-selection" aria-hidden="true"><span class="octicon octicon-link"></span></a>ROI Selection</h1>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+<p>Allow the user to select an algorithm for ROI mask/map creation OR use a pre-computed ROI mask/map. In the future, support field-of-view search feature i.e. if the user selects a recorded volume, move scanner to find optimal alignment between pre-recorded volume and live acquisition.</p>
+
+<h1>
+<a id="image-registration" class="anchor" href="#image-registration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Image Registration</h1>
+
+<p>Given a reference volume perform allow user to choose a image registration algorithm (2D FFT cross correlation) and save the registered data either in the standard tiff format OR in a flat binary format (uint16) - one volume per file, one trials worth of files per directory with a standard naming of the files and directories. Add functionality to set the locations of these files to be on the cluster. In the future, other ways of sending the data to the network should be explored too. Performance Requirement: 8 Hz for 4 planes, 30 Hz for 1 plane.</p>
+
+<p>Future work: Possibly allow user to specify or add registration algorithms. </p>
+
+<h1>
+<a id="roimap" class="anchor" href="#roimap" aria-hidden="true"><span class="octicon octicon-link"></span></a>ROI/Map</h1>
+
+<p>ROIs can be given in two forms, either a binary ROI mask or a weighted Map. Given a set of ROIs (either binary or weighted) compute the inner product of each ROI with the current frame (either with or without motion registration). Performance Requirement: (8 Hz for 4 planes, 30 Hz for 1 plane)</p>
+
+<h1>
+<a id="time-series-display" class="anchor" href="#time-series-display" aria-hidden="true"><span class="octicon octicon-link"></span></a>Time-series display</h1>
+
+<p>Following the inner product with the ROI, plot the time series. The GUI should allow users to specify which ROIs to plot. User should also be able to specify threshold for each ROI and trigger and event if an event is detected. </p>
+
+<h1>
+<a id="analog-outputdigital-output" class="anchor" href="#analog-outputdigital-output" aria-hidden="true"><span class="octicon octicon-link"></span></a>Analog Output/Digital Output</h1>
+
+<p>The time series data should be scaled and output on AO channels from one of the NI boards (scaled ±10V or 0-5V). The user should be able so specify which ROIs to send to the Analog output. In addition, they should allow the setting of thresholds to do simple event detection and output pulses on DIO lines for detected events.</p>
+
+<p>Comments:</p>
+
+<p>NS: For each ROI might want to be able to set F0 value too and then toggle between looking at F and (F-F0)/F0. Thresholds and events will probably want to be defined in the (F-F0)/F0 domain.</p>
+
+<p>It would be useful to flesh out in more detail exactly what the GUI will look like in the first instance (and how you might then want to expand it in the future). For example, how will you display or not display the static reference images, ROI mask / values. How will the user be able to set which ROIs to look at live and which ROIs to send to the AO, how will thresholds be set, how will F0 be set if we want to do an (F-F0)/F0 conversion.</p>
+
+<p>It would also be useful to start laying out how you plan to do this under the hood – i.e. will this run in a separate matlab, what will happen if the registration takes too long (will it drop / skip frames, will the acquisition crash, will we be warned), what sort of timing guarantees will there be.</p>
+
+<p>SP: you should add a neuropil capability; this will be important in many preparations.  It also introduces some problems -- the mask itself is easy, as it is an annulus that is between a range of distances away from the neuron border, but you have to exclude i) other selected ROIs and ii) pixels that are cells/big dendrites but are not part of an ROI.  ii) is tricky -- the way it is done now is that an image with peak correlation for each pixel to its 8 neighbors is computed, and any pixel where this exceeds (e.g.) 0.2 is excluded.  This is predicated on some activity being sampled, and its unclear how much activity is needed to establish this.  Its also quite processing intensive, and goes to Nick’s point about buffering data...</p>
+
+<hr>
+
+<p>Progress (02/20/2015) - AM</p>
+
+<p>So far it's all command line based. I've named the analysis platform "Stager" - for now. Here is a summary of what I've implemented so far:</p>
+
+<p>Architecture:</p>
+
+<p>Stager is based on a client/server architecture. Stager has a server which listens to clients and imports frames into Stager when the client marks the frame as ready. The client class must me initialized by any MATLAB routine which wants to send frames to the Stager. Stager itself is based on a object-oriented design - I believe this will allow for a lot of flexibility later with things like unit testing and modularity. Each instance of Stager supports arrays of time series objects and each time series object has an array of frame objects:</p>
+
+<p>Stager (has)-&gt; n*timeSeriesObject Arrays
+timeSeriesObject (has)-&gt; frameObject Array</p>
+
+<p>A timeSeriesObject can be defined for a z-Plane and channel value-pair or any other arbitrary indexing scheme. Stager currently has a routine that invokes SI5 to acquire n-Frames or uses a pre-acquired tif stack to generate a template image using Nick's pyramid scheme. As a new frame comes in, it is processed and added to the correct frameObject array within the appropriate timeSeriesObject by the Stager. The processing step currently includes the 2DFFT (x-correlation) registration. This takes~23ms+/-2ms - Note: this is on my windows virtual machine on a mac, I would expect the numbers to be much better on any SI rig machine based on FFT benchmarks I performed. Here is a rough sketch of the current scheme:</p>
+
+<p>Implementation Details</p>
+
+<p>The stager runs in its own process i.e. scanImage and the analysis run as two separate processes (two different matlab sessions) - this allows for much better performance and avoids dropped frames on the SI5 process. Since, I have modeled the architecture as a server/client design, any service that wants to use the "Stager" must initialize an instance of the Stager client class. In the case of SI5, ScanImage starts a client session in a userfunction, the client maps each new incoming frame from the scanImage buffer into memory (memory mapped file) and sets a byte value - read flag. The stager server checks the flag and pulls the memory mapped frame, processes it and adds it to a timeSeries object as a frameObject. The client/server relationship between SI5 and Stager supports some low level communication, io flags, header info (channel, frameNum, zPlane) and also allows Stager to invoke some pre-defined SI functions. For example, to generate a new template image before starting acquisition, Stager can invoke the grab function in SI5 and acquire n-Frames to generate a new template image.This does not compromise The mapping of each frame and only takes ~1ms +/-3ms (again this is on my windows virtual machine on a mac). Here is a script that outlines some functionality - some of this will eventually be abstracted away in a GUI and higher level functions.</p>
+
+<p>Next Steps
+I am now working on the Mask class which allows for a "weighted" mask to be applied to a time series or a frame within a time series.  Next, I will work on the ability to select an ROI and plot the and output the data to AO channels and add the ability to define thresholds for DIO ouput. Once I have the basic processing pipeline complete, I will go back and add functionality like detection of hardware and then start working on a GUI.</p>
+
+<hr>
+
+<p>FluoroSNNAP - UPenn</p>
+
+<p>Diego, thanks for sharing – no I did not know about this. Their website <a href="http://www.seas.upenn.edu/%7Emolneuro/fluorosnnap.html">http://www.seas.upenn.edu/~molneuro/fluorosnnap.html</a> has a video demo of the software and code. Also, they have a Journal of Neuroscience paper that describes their software’s capability – attached.</p>
+
+<p>Things I noted:</p>
+
+<p>It’s designed for data that has already been acquired so it’s not designed to  be “real time” i.e. sub 30ms loop time.
+I do like some ideas behind the interface (ROI selection, segmentation, functional integration), which could be improved.
+There are some features that we may want to include – some of the spike detection methods. However, the way I conceptualized the analysis routines was that - we should probably think of many non-essential “online” analysis methods as plugins that can be added by users.
+A large subset of the features (functional connectivity, phase detection, synchronization measures) i.e. Time and processor intensive algorithms are things we probably don’t want on the host computer but would want to delegate these to Spark/Thunder.</p>
+
+<hr>
+
+<p>Meeting Notes with NC - 02/21/2015</p>
+
+<p>AO Daq - use NI DAQ board? Given 30Hz output might be overkill
+For each time series data structure what happens when n-&gt;large N
+Allow option for FFT on downsampled image for faster registration
+Named Pipes/POSIX</p>
+
+<hr>
+
+<p>Meeting Notes with NS - 02/24/2015</p>
+
+<p>Trial info should be in the memfile header
+Only keep track of last n frames
+Explicit error message when frame is dropped
+Fill dropped data with NaN/Zero</p>
+
+<hr>
+
+<p>Meeting Notes (Feedback) with NS - 03/31/2015</p>
+
+<p>Delta F/F should be user defined - plot histogram for each ROI and allow
+user to pick threshold (example: 10% of values below threshold)
+One template for both channels - allow user to pick the channel
+Allow user to input external ROI (Use codeneuro data fromat)
+Allow user to input external template (binary/JSON pair)</p>
+
+<hr>
+
+<p>1- Save the post-registered images online to a network location (for use for instance by Thunder)
+2- Knobs to change contrast and colors in Stager
+                A. Also capability to overlay a currently acquired image and a saved one. 
+3- Running average of x frames (to smooth and to capture sparse neurons).
+4- Robust and efficient calculation of F0 
+5- A way to select from the ROI list which ROIs go to the NI output
+6- A mode to downsample and reduce the refresh rate for the ROI activity display (to improve the latency)
+7- User function that takes ROIs dF/F, extra parameters (weight matrix, etc) and sends the output to the NI (this point I’m currently unsure if he did it or not).
+8 - (I don’t think it was in the specs, and I didn’t mention it today). A cross-bar to indicate the X-Y offset with respect to the reference image (very useful to center the image to previous days). And one for Z. </p>
+
+<p><img src="https://raw.githubusercontent.com/arunesh-mittal/StagerWebpage/master/Screen%20Shot%202015-06-23%20at%208.01.52%20PM.png" alt=""></p>
 
 <pre><code>$ cd your_repo_root/repo_name
 $ git fetch origin
