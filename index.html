@@ -87,22 +87,9 @@
 
 <p>SP: you should add a neuropil capability; this will be important in many preparations.  It also introduces some problems -- the mask itself is easy, as it is an annulus that is between a range of distances away from the neuron border, but you have to exclude i) other selected ROIs and ii) pixels that are cells/big dendrites but are not part of an ROI.  ii) is tricky -- the way it is done now is that an image with peak correlation for each pixel to its 8 neighbors is computed, and any pixel where this exceeds (e.g.) 0.2 is excluded.  This is predicated on some activity being sampled, and its unclear how much activity is needed to establish this.  Its also quite processing intensive, and goes to Nick’s point about buffering data...</p>
 
-<h4>
-<a id="requested-features" class="anchor" href="#requested-features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Requested Features</h4>
-
-<ul>
-<li>asd</li>
-<li><p>asd</p></li>
-<li><p>1- Save the post-registered images online to a network location (for use for instance by Thunder)</p></li>
-<li>2- Knobs to change contrast and colors in Stager with capability to overlay a currently acquired image and a saved one. </li>
-<li>3- Running average of x frames (to smooth and to capture sparse neurons).</li>
-<li>4- Robust and efficient calculation of F0 </li>
-<li>5- A way to select from the ROI list which ROIs go to the NI output</li>
-<li>6- A mode to downsample and reduce the refresh rate for the ROI activity display (to improve the latency)</li>
-<li>7- User function that takes ROIs dF/F, extra parameters (weight matrix, etc) and sends the output to the NI </li>
-<li><p>8- A cross-bar to indicate the X-Y and Z offsets with respect to the reference image.</p></li>
-<li><p>Delta F/F should be user defined - plot histogram for each ROI and allow</p></li>
-<li>user to pick threshold (example: 10% of values below threshold)</li>
+<ol>
+<li>Delta F/F should be user defined - plot histogram for each ROI and allow</li>
+<li>User to pick threshold (example: 10% of values below threshold)</li>
 <li>One template for both channels - allow user to pick the channel</li>
 <li>Allow user to input external ROI (Use codeneuro data fromat)</li>
 <li>Allow user to input external template (binary/JSON pair)</li>
@@ -114,7 +101,21 @@
 <li>For each time series data structure what happens when n-&gt;large N</li>
 <li>Allow option for FFT on downsampled image for faster registration</li>
 <li>Named Pipes/POSIX</li>
-</ul>
+</ol>
+
+<h4>
+<a id="requested-features" class="anchor" href="#requested-features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Requested Features</h4>
+
+<ol>
+<li>Save the post-registered images online to a network location (for use for instance by Thunder)</li>
+<li>Knobs to change contrast and colors in Stager with capability to overlay a currently acquired image and a saved one. </li>
+<li>Running average of x frames (to smooth and to capture sparse neurons).</li>
+<li>Robust and efficient calculation of F0 </li>
+<li>A way to select from the ROI list which ROIs go to the NI output</li>
+<li>A mode to downsample and reduce the refresh rate for the ROI activity display (to improve the latency)</li>
+<li>User function that takes ROIs dF/F, extra parameters (weight matrix, etc) and sends the output to the NI </li>
+<li>A cross-bar to indicate the X-Y and Z offsets with respect to the reference image.</li>
+</ol>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/arunesh-mittal/Stager">Stager</a> is maintained by <a href="https://github.com/arunesh-mittal">arunesh-mittal</a>.</span>
