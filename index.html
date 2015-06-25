@@ -22,6 +22,11 @@
       <h2>
 <a id="image-registration-and-analysis-interface-stager" class="anchor" href="#image-registration-and-analysis-interface-stager" aria-hidden="true"><span class="octicon octicon-link"></span></a>Image Registration and Analysis Interface ‘Stager’</h2>
 
+<p><img src="https://raw.githubusercontent.com/arunesh-mittal/StagerWebpage/master/Screen%20Shot%202015-06-23%20at%208.01.52%20PM.png" alt=""></p>
+
+<h2>
+<a id="features" class="anchor" href="#features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Features:</h2>
+
 <h3>
 <a id="roi-selection" class="anchor" href="#roi-selection" aria-hidden="true"><span class="octicon octicon-link"></span></a>ROI Selection</h3>
 
@@ -63,38 +68,23 @@
 
 <hr>
 
-<p>Progress (02/20/2015) - AM</p>
+<h2>
+<a id="implementation" class="anchor" href="#implementation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Implementation</h2>
 
-<p>So far it's all command line based. I've named the analysis platform "Stager" - for now. Here is a summary of what I've implemented so far:</p>
+<h3>
+<a id="architecture" class="anchor" href="#architecture" aria-hidden="true"><span class="octicon octicon-link"></span></a>Architecture:</h3>
 
-<p>Architecture:</p>
+<p>Stager is based on a client/server architecture. Stager has a server which listens to clients and imports frames into Stager when the client marks the frame as ready. The client class must me initialized by any MATLAB routine which wants to send frames to the Stager. Stager itself is based on a object-oriented design - I believe this will allow for a lot of flexibility later with things like unit testing and modularity. </p>
 
-<p>Stager is based on a client/server architecture. Stager has a server which listens to clients and imports frames into Stager when the client marks the frame as ready. The client class must me initialized by any MATLAB routine which wants to send frames to the Stager. Stager itself is based on a object-oriented design - I believe this will allow for a lot of flexibility later with things like unit testing and modularity. Each instance of Stager supports arrays of time series objects and each time series object has an array of frame objects:</p>
+<p>Stager currently has a routine that invokes SI5 to acquire n-Frames or uses a pre-acquired tif stack to generate a template image using Nick's pyramid scheme. As a new frame comes in, it is processed and added to the correct frameObject array within the appropriate timeSeriesObject by the Stager. The processing step currently includes the 2DFFT (x-correlation) registration. This takes~23ms+/-2ms - Note: this is on my windows virtual machine on a mac, I would expect the numbers to be much better on any SI rig machine based on FFT benchmarks I performed. </p>
 
-<p>Stager (has)-&gt; n*timeSeriesObject Arrays
-timeSeriesObject (has)-&gt; frameObject Array</p>
-
-<p>A timeSeriesObject can be defined for a z-Plane and channel value-pair or any other arbitrary indexing scheme. Stager currently has a routine that invokes SI5 to acquire n-Frames or uses a pre-acquired tif stack to generate a template image using Nick's pyramid scheme. As a new frame comes in, it is processed and added to the correct frameObject array within the appropriate timeSeriesObject by the Stager. The processing step currently includes the 2DFFT (x-correlation) registration. This takes~23ms+/-2ms - Note: this is on my windows virtual machine on a mac, I would expect the numbers to be much better on any SI rig machine based on FFT benchmarks I performed. Here is a rough sketch of the current scheme:</p>
-
-<p>Implementation Details</p>
+<h3>
+<a id="pipeline" class="anchor" href="#pipeline" aria-hidden="true"><span class="octicon octicon-link"></span></a>Pipeline</h3>
 
 <p>The stager runs in its own process i.e. scanImage and the analysis run as two separate processes (two different matlab sessions) - this allows for much better performance and avoids dropped frames on the SI5 process. Since, I have modeled the architecture as a server/client design, any service that wants to use the "Stager" must initialize an instance of the Stager client class. In the case of SI5, ScanImage starts a client session in a userfunction, the client maps each new incoming frame from the scanImage buffer into memory (memory mapped file) and sets a byte value - read flag. The stager server checks the flag and pulls the memory mapped frame, processes it and adds it to a timeSeries object as a frameObject. The client/server relationship between SI5 and Stager supports some low level communication, io flags, header info (channel, frameNum, zPlane) and also allows Stager to invoke some pre-defined SI functions. For example, to generate a new template image before starting acquisition, Stager can invoke the grab function in SI5 and acquire n-Frames to generate a new template image.This does not compromise The mapping of each frame and only takes ~1ms +/-3ms (again this is on my windows virtual machine on a mac). Here is a script that outlines some functionality - some of this will eventually be abstracted away in a GUI and higher level functions.</p>
 
 <p>Next Steps
 I am now working on the Mask class which allows for a "weighted" mask to be applied to a time series or a frame within a time series.  Next, I will work on the ability to select an ROI and plot the and output the data to AO channels and add the ability to define thresholds for DIO ouput. Once I have the basic processing pipeline complete, I will go back and add functionality like detection of hardware and then start working on a GUI.</p>
-
-<hr>
-
-<p>FluoroSNNAP - UPenn</p>
-
-<p>Diego, thanks for sharing – no I did not know about this. Their website <a href="http://www.seas.upenn.edu/%7Emolneuro/fluorosnnap.html">http://www.seas.upenn.edu/~molneuro/fluorosnnap.html</a> has a video demo of the software and code. Also, they have a Journal of Neuroscience paper that describes their software’s capability – attached.</p>
-
-<p>Things I noted:</p>
-
-<p>It’s designed for data that has already been acquired so it’s not designed to  be “real time” i.e. sub 30ms loop time.
-I do like some ideas behind the interface (ROI selection, segmentation, functional integration), which could be improved.
-There are some features that we may want to include – some of the spike detection methods. However, the way I conceptualized the analysis routines was that - we should probably think of many non-essential “online” analysis methods as plugins that can be added by users.
-A large subset of the features (functional connectivity, phase detection, synchronization measures) i.e. Time and processor intensive algorithms are things we probably don’t want on the host computer but would want to delegate these to Spark/Thunder.</p>
 
 <hr>
 
@@ -135,8 +125,6 @@ Allow user to input external template (binary/JSON pair)</p>
 6- A mode to downsample and reduce the refresh rate for the ROI activity display (to improve the latency)
 7- User function that takes ROIs dF/F, extra parameters (weight matrix, etc) and sends the output to the NI (this point I’m currently unsure if he did it or not).
 8 - (I don’t think it was in the specs, and I didn’t mention it today). A cross-bar to indicate the X-Y offset with respect to the reference image (very useful to center the image to previous days). And one for Z. </p>
-
-<p><img src="https://raw.githubusercontent.com/arunesh-mittal/StagerWebpage/master/Screen%20Shot%202015-06-23%20at%208.01.52%20PM.png" alt=""></p>
 
 <pre><code>$ cd your_repo_root/repo_name
 $ git fetch origin
