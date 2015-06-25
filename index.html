@@ -19,35 +19,37 @@
     </section>
 
     <section class="main-content">
-      <h3>
-<a id="image-registration-and-analysis-interface-stager" class="anchor" href="#image-registration-and-analysis-interface-stager" aria-hidden="true"><span class="octicon octicon-link"></span></a>Image Registration and Analysis Interface ‘Stager’</h3>
+      <h2>
+<a id="image-registration-and-analysis-interface-stager" class="anchor" href="#image-registration-and-analysis-interface-stager" aria-hidden="true"><span class="octicon octicon-link"></span></a>Image Registration and Analysis Interface ‘Stager’</h2>
 
-<h1>
-<a id="roi-selection" class="anchor" href="#roi-selection" aria-hidden="true"><span class="octicon octicon-link"></span></a>ROI Selection</h1>
+<h3>
+<a id="roi-selection" class="anchor" href="#roi-selection" aria-hidden="true"><span class="octicon octicon-link"></span></a>ROI Selection</h3>
 
 <p>Allow the user to select an algorithm for ROI mask/map creation OR use a pre-computed ROI mask/map. In the future, support field-of-view search feature i.e. if the user selects a recorded volume, move scanner to find optimal alignment between pre-recorded volume and live acquisition.</p>
 
-<h1>
-<a id="image-registration" class="anchor" href="#image-registration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Image Registration</h1>
+<h3>
+<a id="image-registration" class="anchor" href="#image-registration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Image Registration</h3>
 
 <p>Given a reference volume perform allow user to choose a image registration algorithm (2D FFT cross correlation) and save the registered data either in the standard tiff format OR in a flat binary format (uint16) - one volume per file, one trials worth of files per directory with a standard naming of the files and directories. Add functionality to set the locations of these files to be on the cluster. In the future, other ways of sending the data to the network should be explored too. Performance Requirement: 8 Hz for 4 planes, 30 Hz for 1 plane.</p>
 
 <p>Future work: Possibly allow user to specify or add registration algorithms. </p>
 
-<h1>
-<a id="roimap" class="anchor" href="#roimap" aria-hidden="true"><span class="octicon octicon-link"></span></a>ROI/Map</h1>
+<h3>
+<a id="roimap" class="anchor" href="#roimap" aria-hidden="true"><span class="octicon octicon-link"></span></a>ROI/Map</h3>
 
 <p>ROIs can be given in two forms, either a binary ROI mask or a weighted Map. Given a set of ROIs (either binary or weighted) compute the inner product of each ROI with the current frame (either with or without motion registration). Performance Requirement: (8 Hz for 4 planes, 30 Hz for 1 plane)</p>
 
-<h1>
-<a id="time-series-display" class="anchor" href="#time-series-display" aria-hidden="true"><span class="octicon octicon-link"></span></a>Time-series display</h1>
+<h3>
+<a id="time-series-display" class="anchor" href="#time-series-display" aria-hidden="true"><span class="octicon octicon-link"></span></a>Time-series display</h3>
 
 <p>Following the inner product with the ROI, plot the time series. The GUI should allow users to specify which ROIs to plot. User should also be able to specify threshold for each ROI and trigger and event if an event is detected. </p>
 
-<h1>
-<a id="analog-outputdigital-output" class="anchor" href="#analog-outputdigital-output" aria-hidden="true"><span class="octicon octicon-link"></span></a>Analog Output/Digital Output</h1>
+<h3>
+<a id="analog-outputdigital-output" class="anchor" href="#analog-outputdigital-output" aria-hidden="true"><span class="octicon octicon-link"></span></a>Analog Output/Digital Output</h3>
 
 <p>The time series data should be scaled and output on AO channels from one of the NI boards (scaled ±10V or 0-5V). The user should be able so specify which ROIs to send to the Analog output. In addition, they should allow the setting of thresholds to do simple event detection and output pulses on DIO lines for detected events.</p>
+
+<hr>
 
 <p>Comments:</p>
 
