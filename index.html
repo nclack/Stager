@@ -90,28 +90,29 @@
 <h4>
 <a id="requested-features" class="anchor" href="#requested-features" aria-hidden="true"><span class="octicon octicon-link"></span></a>Requested Features</h4>
 
-<p>*1- Save the post-registered images online to a network location (for use for instance by Thunder)
-*2- Knobs to change contrast and colors in Stager with capability to overlay a currently acquired image and a saved one. 
-*3- Running average of x frames (to smooth and to capture sparse neurons).
-*4- Robust and efficient calculation of F0 
-*5- A way to select from the ROI list which ROIs go to the NI output
-*6- A mode to downsample and reduce the refresh rate for the ROI activity display (to improve the latency)
-*7- User function that takes ROIs dF/F, extra parameters (weight matrix, etc) and sends the output to the NI 
-*8- A cross-bar to indicate the X-Y and Z offsets with respect to the reference image.</p>
-
-<p>*Delta F/F should be user defined - plot histogram for each ROI and allow
-*user to pick threshold (example: 10% of values below threshold)
-*One template for both channels - allow user to pick the channel
-*Allow user to input external ROI (Use codeneuro data fromat)
-*Allow user to input external template (binary/JSON pair)
-*Trial info should be in the memfile header
-*Only keep track of last n frames
-*Explicit error message when frame is dropped
-*Fill dropped data with NaN/Zero
-*AO Daq - use NI DAQ board? Given 30Hz output might be overkill
-*For each time series data structure what happens when n-&gt;large N
-*Allow option for FFT on downsampled image for faster registration
-*Named Pipes/POSIX</p>
+<ul>
+<li>1- Save the post-registered images online to a network location (for use for instance by Thunder)</li>
+<li>2- Knobs to change contrast and colors in Stager with capability to overlay a currently acquired image and a saved one. </li>
+<li>3- Running average of x frames (to smooth and to capture sparse neurons).</li>
+<li>4- Robust and efficient calculation of F0 </li>
+<li>5- A way to select from the ROI list which ROIs go to the NI output</li>
+<li>6- A mode to downsample and reduce the refresh rate for the ROI activity display (to improve the latency)</li>
+<li>7- User function that takes ROIs dF/F, extra parameters (weight matrix, etc) and sends the output to the NI </li>
+<li><p>8- A cross-bar to indicate the X-Y and Z offsets with respect to the reference image.</p></li>
+<li><p>Delta F/F should be user defined - plot histogram for each ROI and allow</p></li>
+<li>user to pick threshold (example: 10% of values below threshold)</li>
+<li>One template for both channels - allow user to pick the channel</li>
+<li>Allow user to input external ROI (Use codeneuro data fromat)</li>
+<li>Allow user to input external template (binary/JSON pair)</li>
+<li>Trial info should be in the memfile header</li>
+<li>Only keep track of last n frames</li>
+<li>Explicit error message when frame is dropped</li>
+<li>Fill dropped data with NaN/Zero</li>
+<li>AO Daq - use NI DAQ board? Given 30Hz output might be overkill</li>
+<li>For each time series data structure what happens when n-&gt;large N</li>
+<li>Allow option for FFT on downsampled image for faster registration</li>
+<li>Named Pipes/POSIX</li>
+</ul>
 
       <footer class="site-footer">
         <span class="site-footer-owner"><a href="https://github.com/arunesh-mittal/Stager">Stager</a> is maintained by <a href="https://github.com/arunesh-mittal">arunesh-mittal</a>.</span>
