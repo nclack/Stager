@@ -1,20 +1,29 @@
-function out=aogui(getRoiNames,varargin)
+function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,varargin)
     
-    heightHint=22;
-    
+    heightHint=22;    
     is_running=false;
+    config=[]; 
 
     
-    h=uipanel('title','Signal generation',varargin{:});    
+    h=uipanel('title','Signal generation',varargin{:});
+    names=getRoiNames();
+    if ~isempty(names)
+        config=getConfigForROIByName(names{1});
+    end
     draw;
+    % FIXME: make sure first is selected
     
-    out=struct('redraw',@draw);
+    out=struct(...
+        'notifyConfigUpdatedForROI',@onConfigUpdatedForROI,...
+        'redraw',@draw);
+    
+    %% interface
     
     function draw
-        clo(h); % (ngc) if I have to guess, which I do, this is 'clear object'.  I wish I could find documentation though.
+        clo(h);
         l0=uiflowcontainer('v0','Parent',h,'FlowDirection','TopDown');    
     
-        addrow('ROI',@roiSelector,getRoiNames,'parent',l0);
+        addrow('ROI',@roiSelector,getRoiNames,'parent',l0,'tag','roiSelector');
         addrow('Transform',@transformField,'parent',l0);
         
         l1=uitabgroup(l0);
@@ -23,11 +32,25 @@ function out=aogui(getRoiNames,varargin)
         
         statePanel('parent',l0);
     end
-    
+
+    function onConfigUpdatedForROI(roiname)
+        % Could be a new roi, or just updating an existing roi
+        if countofROIs()<1 % then set selected and update
+            error('TODO'); % first, need to do the logic for updating when something is selected
+        end
+        if ~isCurrentROI(roiname), return; end;
+        % update view
+        config=validateConfig(getConfigForROIByName(roiname));
+        draw;
+        % FIXME: make sure same roi is selected
+    end    
+
     %% small controls/fields
 
     function roiSelector(getRoiNames,varargin)        
-        uicontrol('Style','popupmenu','String',getRoiNames(),'Value',1,varargin{:});        
+        uicontrol('Style','popupmenu',...
+            'String',getRoiNames(),'Value',1,...
+            'Callback',@(~,~) onSelectionChange,varargin{:});
     end
 
     function transformField(varargin)
@@ -42,7 +65,7 @@ function out=aogui(getRoiNames,varargin)
     function thresholdField(varargin)
         L=uiflowcontainer('v0','FlowDirection','LeftToRight',varargin{:});
         uicontrol('style','edit','string','0.5','tooltipstring','Trigger threshold in Volts','parent',L);
-        H=uicontrol('style','text','string','V','parent',L);
+        H=uicontrol('style','text','string','Volts','parent',L);
         extent=get(H,'Extent');
         set(H,'WidthLimits',[extent(3) extent(3)]);
     end
@@ -97,8 +120,7 @@ function out=aogui(getRoiNames,varargin)
         end
         is_running=~is_running;
         updateStateControl(statecontrol);
-    end
-
+    end    
     
     function start
         dbstack;
@@ -106,6 +128,68 @@ function out=aogui(getRoiNames,varargin)
     
     function stop
         dbstack;
+    end
+
+    function config_=validateConfig(config_)
+        %{
+        c.MasterTransform
+        c.ao(:).ChannelName
+               .Transform
+        c.do(:).ChannelName
+               .Transform
+               .Threshold
+               .TriggeredState        
+        %}        
+        aoDefaults={...
+            'ChannelName','Dev1/ao0',...
+            'Transform','@(x) x'};
+        doDefaults={...
+                'ChannelName','Dev1/port0/line0',...
+                'Transform','@(x) x',...
+                'Threshold',0.0,...
+                'TriggeredState','low'};
+        config_=optional(config_,...
+            'ao',optional(struct(),aoDefaults{:}),...
+            'do',optional(struct(),doDefaults{:}),...
+            'MasterTransform','@(x) x');
+        for i=1:numel(config_.ao)
+            config_.ao(i)=optional(config_.ao(i),aoDefaults{:});                
+        end
+        for i=1:numel(config_.do)
+            config_.do(i)=optional(config_.do(i),doDefaults{:});
+        end
+        function c=optional(c,varargin)
+            vs=reshape(varargin,2,[]);
+            for v=vs
+                [field,default]=deal(v{:});
+                if ~isfield(c,field), c.(field)=default; end
+            end            
+        end
+    end
+
+    function n=countofROIs
+        n=numel(get(findobj(h,'tag','roiSelector'),'String'));
+    end
+
+    function name=selectedROIName
+        H=findobj(h,'tag','roiSelector');
+        i=get(H,'Value');
+        s=get(H,'String');
+        name=s{i};
+    end
+
+    function tf=isCurrentROI(roiname)        
+        tf=strcmp(selectedROIName(),roiname)==0;
+    end        
+
+    function onSelectionChange
+        config=validateConfig(getConfigForROIByName(selectedROIName()));
+        draw;
+    end
+
+    function onUpdate
+        dbstack;
+        setConfigForROIByName(selectedROIName(),config);
     end
 
     %% utilities
@@ -140,7 +224,7 @@ function out=aogui(getRoiNames,varargin)
             return
         end
         parent=c.(field);
-        rest=[a invstruct(rmfield(c,field))];
+        rest=[a(:); invstruct(rmfield(c,field))];
         function y=invstruct(x)
             y=[fieldnames(x) struct2cell(x)]';
             y=y(:);
