@@ -1,36 +1,44 @@
-function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,varargin)
+function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start,stop,varargin)
     
-    heightHint=22;    
+    heightHint=25;    
     is_running=false;
-    config=[]; 
-
+    config=validateConfig([]);
+    statecontrol=[];
+    
+    assert(nargin>=3);
     
     h=uipanel('title','Signal generation',varargin{:});
     names=getRoiNames();
     if ~isempty(names)
-        config=getConfigForROIByName(names{1});
+        config=validateConfig(getConfigForROIByName(names{1}));            
     end
     draw;
+    
     % FIXME: make sure first is selected
     
     out=struct(...
         'notifyConfigUpdatedForROI',@onConfigUpdatedForROI,...
+        'notifyIsRunning',@onNotifyIsRunning,...
+        'updateROINames',@onUpdateROINames,...
         'redraw',@draw);
     
-    %% interface
-    
+    %% interface    
     function draw
         clo(h);
         l0=uiflowcontainer('v0','Parent',h,'FlowDirection','TopDown');    
-    
-        addrow('ROI',@roiSelector,getRoiNames,'parent',l0,'tag','roiSelector');
-        addrow('Transform',@transformField,'parent',l0);
-        
-        l1=uitabgroup(l0);
-        aoPanel('parent',uitab('parent',l1,'title','AO'));
-        doPanel('parent',uitab('parent',l1,'title','DO'));
-        
-        statePanel('parent',l0);
+        if isempty(getRoiNames())
+            uicontrol('style','text','String','','parent',l0);
+            uicontrol('style','text','String','Add ROIs to setup AO/DO output.','parent',l0);
+        else            
+            addrow('ROI',@roiSelector,'parent',l0,'tag','roiSelector');
+            addrow('Transform',@transformField,'parent',l0);
+
+            l1=uitabgroup(l0);
+            aoPanel('parent',uitab('parent',l1,'title','AO'));
+            doPanel('parent',uitab('parent',l1,'title','DO'));
+
+            statePanel('parent',l0);
+        end
     end
 
     function onConfigUpdatedForROI(roiname)
@@ -38,97 +46,121 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,varar
         if countofROIs()<1 % then set selected and update
             error('TODO'); % first, need to do the logic for updating when something is selected
         end
-        if ~isCurrentROI(roiname), return; end;
-        % update view
-        config=validateConfig(getConfigForROIByName(roiname));
-        draw;
-        % FIXME: make sure same roi is selected
+        if ~isCurrentROI(roiname), return; end;        
+        onSelectionChange(); % update view
     end    
 
     %% small controls/fields
-
-    function roiSelector(getRoiNames,varargin)        
-        uicontrol('Style','popupmenu',...
+    function out=roiSelector(varargin)        
+        out=uicontrol('Style','popupmenu',...
             'String',getRoiNames(),'Value',1,...
             'Callback',@(~,~) onSelectionChange,varargin{:});
     end
 
-    function transformField(varargin)
+    function out=transformField(varargin)
         % See Todo (1)
-        uicontrol('style','edit','string','@(x) x',varargin{:});
+        out=uicontrol('style','edit','string',config.MasterTransform,'Callback',@(~,~) update,varargin{:});
+        function update
+            config.MasterTransform=get(out,'String');
+            onUpdate;
+        end
     end
 
-    function channelNameField(varargin)
-        uicontrol('style','edit','tooltipstring','National instruments DAQmx channel name identifier',varargin{:});
+    function out=channelNameField(varargin)
+        out=uicontrol('style','edit','tooltipstring','National instruments DAQmx channel name identifier',varargin{:});
     end
 
-    function thresholdField(varargin)
-        L=uiflowcontainer('v0','FlowDirection','LeftToRight',varargin{:});
-        uicontrol('style','edit','string','0.5','tooltipstring','Trigger threshold in Volts','parent',L);
-        H=uicontrol('style','text','string','Volts','parent',L);
-        extent=get(H,'Extent');
-        set(H,'WidthLimits',[extent(3) extent(3)]);
+    function out=thresholdField(varargin)        
+        out=uicontrol('style','edit','tooltipstring','Trigger threshold in Volts',varargin{:});
     end
 
-    function notField(varargin)
-        uicontrol('style','popupmenu','String',{'High','Low'},varargin{:});
+    function out=notField(varargin)
+        out=uicontrol('style','popupmenu','String',{'High','Low'},varargin{:});
     end
 
     %% panels                
     function aoPanel(varargin)
         % See Todo (2)
         L=uiflowcontainer('v0','FlowDirection','TopDown',varargin{:});
-        addrow('Channel Name',@channelNameField,'string','Dev1/ao0','parent',L);
+        H=addrow('Channel Name',@channelNameField,...
+            'string',config.ao(1).ChannelName,...
+            'Callback',@(~,~) update,...
+            'parent',L);
+        function update
+            config.ao(1).ChannelName=get(H,'String');
+            onUpdate;
+        end
     end
 
     function doPanel(varargin)
         % See Todo (2)
         L=uiflowcontainer('v0','FlowDirection','TopDown',varargin{:});
-        addrow('Channel Name',@channelNameField,'string','Dev1/port0/line0','parent',L);
-        addrow('Threshold',@thresholdField,'parent',L);
-        addrow('Triggered state',@notField,'parent',L);
+        hname   = addrow('Channel Name',@channelNameField,'string',config.do(1).ChannelName,'Callback',@(~,~) update,'parent',L);
+        hthresh = addrow('Threshold',@thresholdField,'string',config.do(1).Threshold,'Callback',@(~,~) update,'parent',L);
+        hstate  = addrow('Triggered state',@notField,'Callback',@(~,~) update,'parent',L);
+        set(hstate,'Value',find(cellfun(@(s) strcmpi(config.do(1).TriggeredState,s),get(hstate,'String'))));
+        function update
+            config.do(1).ChannelName=get(hname,'String');
+            t=str2double(get(hthresh,'String'));
+            if ~isnan(t), config.do(1).Threshold=t; end
+            states=get(hstate,'String');
+            i=get(hstate,'Value');           
+            config.do(1).TriggeredState=lower(states{i});
+            onUpdate;
+        end
     end
 
+    
     function statePanel(varargin)        
         L=uiflowcontainer('v0','FlowDirection','LeftToRight',varargin{:});
-        C=struct(...
+        statecontrol=struct(...
             'button',uicontrol('style','pushbutton','parent',L),...
             'label',uicontrol('style','text','parent',L));
         set(L,'HeightLimits',[heightHint,heightHint]);
         
-        updateStateControl(C);
-        set(C.button,'callback',@(~,~) toggleState(C));
+        updateStateControl();
+        set(statecontrol.button,'callback',@(~,~) toggleState());
     end
       
 
     %% control
-    function updateStateControl(control)
+    function updateStateControl()
         if is_running
-            set(control.button,'String','Stop');
-            set(control.label,'String','Running');
+            set(statecontrol.button,'String','Stop');            
         else
-            set(control.button,'String','Start');
-            set(control.label,'String','');
-        end        
+            set(statecontrol.button,'String','Start');
+            set(statecontrol.label,'String','');
+        end
     end
-        
-    function toggleState(statecontrol)
+
+    function onNotifyIsRunning(is_running_)
+        if is_running_            
+            set(statecontrol.label,'String','Running');
+        end
+        is_running=is_running_;
+        updateStateControl();
+    end
+       
+    function onUpdateROINames(names)
+        getRoiNames=@() names;
+        % see if the selected item in the selection drop down match, and try to
+        % maintain the selection
+        cur=selectedROIName();
+        i=find(cellfun(@(x) strcmp(cur,x),names));        
+        set(findobj(h,'tag','roiSelector'),'Value',i);
+        onSelectionChange();
+    end
+
+    function toggleState()
         if is_running
-            stop;
+            stop();
         else
-            start;
+            set(statecontrol.label,'String','Starting...');
+            start();
         end
         is_running=~is_running;
-        updateStateControl(statecontrol);
+        updateStateControl();
     end    
-    
-    function start
-        dbstack;
-    end
-    
-    function stop
-        dbstack;
-    end
 
     function config_=validateConfig(config_)
         %{
@@ -147,7 +179,7 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,varar
                 'ChannelName','Dev1/port0/line0',...
                 'Transform','@(x) x',...
                 'Threshold',0.0,...
-                'TriggeredState','low'};
+                'TriggeredState','high'};
         config_=optional(config_,...
             'ao',optional(struct(),aoDefaults{:}),...
             'do',optional(struct(),doDefaults{:}),...
@@ -175,29 +207,42 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,varar
         H=findobj(h,'tag','roiSelector');
         i=get(H,'Value');
         s=get(H,'String');
-        name=s{i};
+        if isempty(s)
+            name=[];
+        else            
+            name=s{i};
+        end
     end
 
     function tf=isCurrentROI(roiname)        
-        tf=strcmp(selectedROIName(),roiname)==0;
+        tf=strcmp(selectedROIName(),roiname);
     end        
 
     function onSelectionChange
+        i=get(findobj(h,'tag','roiSelector'),'Value');
         config=validateConfig(getConfigForROIByName(selectedROIName()));
         draw;
+        set(findobj(h,'tag','roiSelector'),'Value',i);
     end
 
     function onUpdate
         dbstack;
+        disp(config);
+        disp(config.ao(:));
+        disp(config.do(:));
         setConfigForROIByName(selectedROIName(),config);
     end
 
     %% utilities
     
-    function addrow(label,controlConstructor,varargin)
-        % This is supposed to work like QFormLayout::addRow in Qt.
+    function out=addrow(label,controlConstructor,varargin)
+        % This is inspired by QFormLayout::addRow in Qt.
+        %
+        % Returns a handle to the constructed control.
+        %
         % FIXME: doesn't really get vertical text placement correct
         %        (centered)
+        % TODO: set width of text elements to max width from all rows
         
         [parent,args]=pickparent_(varargin{:});
         H=uiflowcontainer('v0','Parent',parent,'FlowDirection','LeftToRight');
@@ -205,7 +250,7 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,varar
         L=uicontrol('parent',H,'Style','text','String',label);
         extent=get(L,'Extent');
         set(L,'WidthLimits',[extent(3) extent(3)]);
-        controlConstructor(args{:},'parent',H);
+        out=controlConstructor(args{:},'parent',H);
     end
 
     function [parent,rest]=pickparent_(varargin)
@@ -249,6 +294,14 @@ end
         AO: -> (optional per channel transform) -> volts
 
         DO: -> (optional per channel transform) -> threshold -> maybe not -> state
+
+    getROINames
+
+        This probably should be a cell-array of strings (a plain value).
+        I didn't start that way though.  Instead, I made it a function.
+        The idea was that maybe it would query a handle graphics thing 
+        and I don't know what.
+
     
     TODO
 
@@ -263,5 +316,7 @@ end
     support for output across multiple channels, each with their own xfrom.
 
     3. plotting
+
+    4. save and load
 
 %}
