@@ -17,6 +17,7 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
     % FIXME: make sure first is selected
     
     out=struct(...
+        'getDefaultConfig',@() validateConfig([]),...
         'notifyConfigUpdatedForROI',@onConfigUpdatedForROI,...
         'notifyIsRunning',@onNotifyIsRunning,...
         'updateROINames',@onUpdateROINames,...
@@ -78,16 +79,25 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
         out=uicontrol('style','popupmenu','String',{'High','Low'},varargin{:});
     end
 
+    function out=enableField(varargin)
+        out=uicontrol('style','checkbox',varargin{:});
+    end
+
     %% panels                
     function aoPanel(varargin)
         % See Todo (2)
         L=uiflowcontainer('v0','FlowDirection','TopDown',varargin{:});
-        H=addrow('Channel Name',@channelNameField,...
+        hname=addrow('Channel Name',@channelNameField,...
             'string',config.ao(1).ChannelName,...
             'Callback',@(~,~) update,...
             'parent',L);
+        henable=addrow('Enable',@enableField,...
+            'Value',config.ao(1).Enable,...
+            'Callback',@(~,~) update,...
+            'parent',L);
         function update
-            config.ao(1).ChannelName=get(H,'String');
+            config.ao(1).ChannelName=get(hname,'String');
+            config.ao(1).Enable=get(henable,'Value');
             onUpdate;
         end
     end
@@ -98,6 +108,7 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
         hname   = addrow('Channel Name',@channelNameField,'string',config.do(1).ChannelName,'Callback',@(~,~) update,'parent',L);
         hthresh = addrow('Threshold',@thresholdField,'string',config.do(1).Threshold,'Callback',@(~,~) update,'parent',L);
         hstate  = addrow('Triggered state',@notField,'Callback',@(~,~) update,'parent',L);
+        henable = addrow('Enable',@enableField,'Value',config.do(1).Enable,'Callback',@(~,~) update,'parent',L);
         set(hstate,'Value',find(cellfun(@(s) strcmpi(config.do(1).TriggeredState,s),get(hstate,'String'))));
         function update
             config.do(1).ChannelName=get(hname,'String');
@@ -106,10 +117,10 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
             states=get(hstate,'String');
             i=get(hstate,'Value');           
             config.do(1).TriggeredState=lower(states{i});
+            config.do(1).Enable=get(henable,'Value');
             onUpdate;
         end
     end
-
     
     function statePanel(varargin)        
         L=uiflowcontainer('v0','FlowDirection','LeftToRight',varargin{:});
@@ -120,8 +131,7 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
         
         updateStateControl();
         set(statecontrol.button,'callback',@(~,~) toggleState());
-    end
-      
+    end      
 
     %% control
     function updateStateControl()
@@ -147,6 +157,7 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
         % maintain the selection
         cur=selectedROIName();
         i=find(cellfun(@(x) strcmp(cur,x),names));        
+        if isempty(i),i=1; end
         set(findobj(h,'tag','roiSelector'),'Value',i);
         onSelectionChange();
     end
@@ -154,11 +165,11 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
     function toggleState()
         if is_running
             stop();
+            is_running=0;
         else
             set(statecontrol.label,'String','Starting...');
-            start();
-        end
-        is_running=~is_running;
+            start(); % relies on caller to notify when actually running.
+        end        
         updateStateControl();
     end    
 
@@ -167,19 +178,23 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
         c.MasterTransform
         c.ao(:).ChannelName
                .Transform
+               .Enable                
         c.do(:).ChannelName
                .Transform
                .Threshold
                .TriggeredState        
+               .Enable
         %}        
         aoDefaults={...
             'ChannelName','Dev1/ao0',...
-            'Transform','@(x) x'};
+            'Transform','@(x) x',...
+            'Enable',false}; % it's probably important that channels are created off by default.
         doDefaults={...
                 'ChannelName','Dev1/port0/line0',...
                 'Transform','@(x) x',...
                 'Threshold',0.0,...
-                'TriggeredState','high'};
+                'TriggeredState','high',...
+                'Enable',false}; % it's probably important that channels are created off by default.
         config_=optional(config_,...
             'ao',optional(struct(),aoDefaults{:}),...
             'do',optional(struct(),doDefaults{:}),...
@@ -219,10 +234,13 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
     end        
 
     function onSelectionChange
-        i=get(findobj(h,'tag','roiSelector'),'Value');
+        i=get(findobj(h,'tag','roiSelector'),'Value'); % findobj will not find the roiSelector if no rois have been added yet.       
+        if isempty(i),i=1;end
         config=validateConfig(getConfigForROIByName(selectedROIName()));
         draw;
-        set(findobj(h,'tag','roiSelector'),'Value',i);
+        H=findobj(h,'tag','roiSelector');
+        i=min(i,numel(get(H,'string')));
+        set(H,'Value',i);
     end
 
     function onUpdate
@@ -318,5 +336,10 @@ end
     3. plotting
 
     4. save and load
+
+    5. For transform fields, provide some feedback about whether the input 
+       expression is evaluable.
+
+       Add tooltip to say Transform must be a function handle
 
 %}
