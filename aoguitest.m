@@ -11,7 +11,6 @@ gui=aogui(...
     @start,...
     @stop);
 
-
 out=struct(...
     'gui',gui,...
     'pushDataForROIByName',@pushDataForROIByName);
@@ -36,7 +35,7 @@ out=struct(...
             if isempty(c),c=gui.getDefaultConfig(); end;
             for name = fieldnames(c)
                 for o=c.ao(find(c.ao(:).Enable)) %#ok<FNDSB>
-                    device.createAOChannel(o.ChannelName)
+                    device.createAOChannel(o.ChannelName,0)
                 end
                 for o=c.do(find(c.do(:).Enable)) %#ok<FNDSB>
                     initialState=strcmpi(o.TriggeredState,'low');
@@ -53,8 +52,7 @@ out=struct(...
         disp('stop')
     end
 
-    %% interface for pushing data
-        
+    %% interface for pushing data        
     function pushDataForROIByName(key,v)
         if(device.isRunning())
             c=get(key);
@@ -89,11 +87,11 @@ out=struct(...
             'stop',           @testDeviceStop,...
             'isRunning',      @testDeviceIsRunning);
 
-        function testDeviceCreateAOChannel(name)
+        function testDeviceCreateAOChannel(name,initialVoltage)
             if isKey(active_channels,name)
                 error(['AO Channel conflict: ',name,' is already used.']);
             end
-            active_channels(name)=0.0;
+            active_channels(name)=initialVoltage;
             disp(['Added AO channel: ' name]);
         end
         function testDeviceCreateDOChannel(name,initialState)
@@ -133,9 +131,18 @@ end
  
         Required device interface 
 
-            device.createAOChannel()
-            device.createDOChannel()
+            device.createAOChannel(channelName,initialVoltage)
+            device.createDOChannel(channelName,initialState)
             device.start();
             device.stop();
             device.isRunning();
+
+            probably also needs to be a construct/destruct...or maybe that
+            can just be part of start/stop.
+
+                init can not be part of start.  Must do 
+                    1. init
+                    2. add channels
+                    3. start
+                    
 %}
