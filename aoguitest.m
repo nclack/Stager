@@ -1,8 +1,6 @@
 function out=aoguitest
 
 device=createDevice();
-
-
 configs=struct('jim',[],'bob',[]);
 
 % function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start,stop,varargin)
@@ -33,15 +31,17 @@ out=struct(...
 
     function start
         disp('start')
-        c=get(key);
-        if isempty(c),c=gui.getDefaultConfig(); end;
-        for name = fieldnames(c)
-            for o=c.ao(find(c.ao(:).Enable)) %#ok<FNDSB>
-                device.createAOChannel(o.ChannelName)
-            end
-            for o=c.do(find(c.do(:).Enable)) %#ok<FNDSB>
-                initialState=strcmpi(o.TriggeredState,'low');
-                device.createDOChannel(o.ChannelName,initialState);
+        for key=fieldnames(configs)'
+            c=get(key{1});
+            if isempty(c),c=gui.getDefaultConfig(); end;
+            for name = fieldnames(c)
+                for o=c.ao(find(c.ao(:).Enable)) %#ok<FNDSB>
+                    device.createAOChannel(o.ChannelName)
+                end
+                for o=c.do(find(c.do(:).Enable)) %#ok<FNDSB>
+                    initialState=strcmpi(o.TriggeredState,'low');
+                    device.createDOChannel(o.ChannelName,initialState);
+                end
             end
         end
         device.start();
@@ -56,48 +56,61 @@ out=struct(...
     %% interface for pushing data
         
     function pushDataForROIByName(key,v)
-        c=get(key);
-        if isempty(c),c=gui.getDefaultConfig();end;
-        MasterTransform=eval(c.MasterTransform);
-        for o=c.ao(find(c.ao(:).Enable)) %#ok<FNDSB>
-            ChannelTransform=eval(o.Transform);
-            vv=ChannelTransform(MasterTransform(v));
-            disp(['Output analog ',num2str(vv),'Volts for ', o.ChannelName]);
-        end
-        for o=c.do(find(c.do(:).Enable)) %#ok<FNDSB>
-            ChannelTransform=eval(o.Transform);
-            vv=ChannelTransform(MasterTransform(v));
-            if strcmpi(o.TriggeredState,'high')
-                vv=vv>o.Threshold;
-            else
-                vv=vv<=o.Threshold;
+        if(device.isRunning())
+            c=get(key);
+            if isempty(c),c=gui.getDefaultConfig();end;
+            MasterTransform=eval(c.MasterTransform);
+            for o=c.ao(find(c.ao(:).Enable)) %#ok<FNDSB>
+                ChannelTransform=eval(o.Transform);
+                vv=ChannelTransform(MasterTransform(v));
+                disp(['Output analog ',num2str(vv),' Volts for ', o.ChannelName]);
             end
-            disp(['Output digital ',num2str(vv),' for ', o.ChannelName]);
-        end                
+            for o=c.do(find(c.do(:).Enable)) %#ok<FNDSB>
+                ChannelTransform=eval(o.Transform);
+                vv=ChannelTransform(MasterTransform(v));
+                if strcmpi(o.TriggeredState,'high')
+                    vv=vv>o.Threshold;
+                else
+                    vv=vv<=o.Threshold;
+                end
+                disp(['Output digital ',num2str(vv),' for ', o.ChannelName]);
+            end                
+        end
     end
 
     %% Device interface
     function d=createDevice
         is_running=0;
-        active_channels=struct();
+        active_channels=containers.Map();
         d=struct(...
             'createAOChannel',@testDeviceCreateAOChannel,...
             'createDOChannel',@testDeviceCreateDOChannel,...
             'start',          @testDeviceStart,...
             'stop',           @testDeviceStop,...
-            'isRunning',      @testDeviceIsRunning,...
-            );
+            'isRunning',      @testDeviceIsRunning);
 
         function testDeviceCreateAOChannel(name)
+            if isKey(active_channels,name)
+                error(['AO Channel conflict: ',name,' is already used.']);
+            end
+            active_channels(name)=0.0;
+            disp(['Added AO channel: ' name]);
         end
         function testDeviceCreateDOChannel(name,initialState)
+            if isKey(active_channels,name)
+                error(['DO Channel conflict: ',name,' is already used.']);
+            end
+            active_channels(name)=initialState;
+            disp(['Added DO channel: ' name]);
         end
         function testDeviceStart
+            if isempty(active_channels), return; end
             is_running=1;
             pause(0.5);
         end
         function testDeviceStop
             is_running=0;
+            active_channels=containers.Map();
         end
         function tf=testDeviceIsRunning
             tf=is_running;

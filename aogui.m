@@ -168,7 +168,14 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
             is_running=0;
         else
             set(statecontrol.label,'String','Starting...');
-            start(); % relies on caller to notify when actually running.
+           try
+                start(); % relies on caller to notify when actually running.
+            catch e
+                stop();
+                out.notifyIsRunning(0);
+                rethrow(e);
+            end
+          
         end        
         updateStateControl();
     end    
