@@ -29,7 +29,14 @@ static void nierr(int code) {
     mexErrMsgIdAndTxt(PROJECT ":DaqmxError",buf);
 }
 
-#define withtask(task,e) do{ int ecode=(e); if(ecode) { DAQmxClearTask(task); nierr(ecode); (task)=0;}}while(0)
+static void clear(TaskHandle task) {
+    char buf[1024]={0};
+    DAQmxGetTaskName(task,buf,sizeof(buf));
+    mexPrintf("Clearing task: %s\n",buf);
+    nierr(DAQmxClearTask(task));
+}
+
+#define withtask(task,e) do{ int ecode=(e); if(ecode) { clear(task); nierr(ecode); (task)=0;}}while(0)
 
 #define check(e) do{if(!(e)) {mexErrMsgIdAndTxt(PROJECT ":" FUNCTION,"Assertion failed: \n\t" #e "\n\tSource: %s\n\tLine %d\n",__FILE__,__LINE__);}} while(0)
 #define checktype(e,type) do{if(mxGetClassID(e)!=(type)) {mexErrMsgIdAndTxt(PROJECT ":" FUNCTION,"Type check failed: \n\tExpected " #type " for " #e "\n\tSource: %s\n\tLine %d\n",__FILE__,__LINE__);}} while(0)

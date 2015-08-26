@@ -49,7 +49,7 @@ function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start
         end
         if ~isCurrentROI(roiname), return; end;        
         onSelectionChange(); % update view
-    end    
+    end        
 
     %% small controls/fields
     function out=roiSelector(varargin)        

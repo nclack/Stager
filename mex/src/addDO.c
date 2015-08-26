@@ -16,7 +16,7 @@ void mexFunction(int nlhs,mxArray *plhs[], int nrhs,const mxArray*prhs[]) {
     { 
         mwSize dims[]={1};
         plhs[0]=mxCreateNumericArray(1,dims,mxUINT64_CLASS,mxREAL);
-        nierr(DAQmxCreateTask(PROJECT,task=(TaskHandle*)mxGetData(plhs[0])));
+        nierr(DAQmxCreateTask(NULL,task=(TaskHandle*)mxGetData(plhs[0])));
     }
 
     mxGetString(prhs[0],buf,sizeof(buf));
