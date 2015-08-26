@@ -1,12 +1,31 @@
-function out=aoguitest
+function out=controller(device)
+%% out=controller(device)
+%  Starts the analog/digital output interface.
+%
+%  EXAMPLE
+%
+%       out=controller(devices.nidaqmxDevice())
+%       out.addROI('roi1');
+%       out.pushDataForROIByName('roi1',5)
+%
+%  NOTES
+%
+%         Required device interface :
+%
+%            device.createAOChannel(channelName,initialVoltage)
+%            device.createDOChannel(channelName,initialState)
+%            device.writeAO(channelName,value);
+%            device.writeDO(channelName,value);
+%            device.start();
+%            device.stop();
+%            device.isRunning();
 
-device=devices.nidaqmxDevice();
 configs=struct('jim',[],'bob',[]);
 cache=struct(); % keys are roi names
 
 
 % function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start,stop,varargin)
-gui=aogui(...
+gui=view(...
     @() fieldnames(configs),...
     @get,...
     @set,...
@@ -27,7 +46,7 @@ out=struct(...
         end
     end
 
-    function set(key,value)        
+    function set(key,value)
         if device.isRunning()
             if changeRequiresRestart(key,value)
                 disp('Changed requires restarting the device.');
@@ -50,8 +69,8 @@ out=struct(...
             % presumes device is running
             if ~isfield(configs,key)
                 tf=anyChannelIsEnabled(value); % a new roi: are any channels enabled?
-            else                                
-                original=get(key);                
+            else
+                original=get(key);
                 if isempty(original),original=gui.getDefaultConfig(); end;
                 for type={'ao','do'}
                     for i=1:length(original.(type{1}))
@@ -59,15 +78,15 @@ out=struct(...
                         if value.(type{1})(i).Enable && ~isequal(original.(type{1})(i).ChannelName,value.(type{1})(i).ChannelName)
                             tf=1; return; 
                         end
-                    end                
+                    end
                 end
                 tf=0;
             end
-        end                
+        end
         
         function tf=changeRequiresDeviceUpdate(key,value)
             % presumes change does not require restart
-            original=get(key);     
+            original=get(key);
             if isempty(original),original=gui.getDefaultConfig(); end;
             if ~isequal(original.MasterTransform,value.MasterTransform)
                 tf=1; return;
@@ -81,9 +100,9 @@ out=struct(...
                                     tf=1; return; 
                                 end
                             end
-                        end                        
+                        end
                     end
-                end                
+                end
             end
             tf=0;
         end
@@ -91,7 +110,7 @@ out=struct(...
         function tf=anyChannelIsEnabled(cfg)
             tf=0;
             for c=cfg.ao, tf=tf||c.Enable; end
-            for c=cfg.do, tf=tf||c.Enable; end            
+            for c=cfg.do, tf=tf||c.Enable; end
         end        
     end
 
@@ -100,7 +119,7 @@ out=struct(...
         for key=fieldnames(configs)'
             c=get(key{1});
             if isempty(c),c=gui.getDefaultConfig(); end;
-            for name = fieldnames(c)                
+            for name = fieldnames(c)
                 for o=c.ao(find(c.ao(:).Enable)) %#ok<FNDSB>
                     device.createAOChannel(o.ChannelName,0);
                 end
@@ -146,7 +165,7 @@ out=struct(...
             MasterTransform=eval(c.MasterTransform);
             for o=c.ao(find(c.ao(:).Enable)) %#ok<FNDSB>
                 ChannelTransform=eval(o.Transform);
-                vv=ChannelTransform(MasterTransform(v));                
+                vv=ChannelTransform(MasterTransform(v));
                 device.writeAO(o.ChannelName,vv);
             end
             for o=c.do(find(c.do(:).Enable)) %#ok<FNDSB>
@@ -166,7 +185,7 @@ out=struct(...
         for key=fieldnames(configs)'
             c=get(key{1});
             if isempty(c),c=gui.getDefaultConfig(); end;
-            for name = fieldnames(c)                
+            for name = fieldnames(c)
                 for o=c.ao(find(c.ao(:).Enable)) %#ok<FNDSB>
                     device.writeAO(o.ChannelName,0);
                 end
@@ -184,11 +203,17 @@ end
 
         
         [x]. Enable a value to be pushed for an roi.
-        []. Implement the pipeline that:
+        [x]. Implement the pipeline that:
             [x]. transforms the value for each channel
             [x]. applies a threshold if neccessary
-            []. generates some output
-        []. Create all the channels on start and begin the tasks.
+            [x]. generates some output
+        [x]. Create all the channels on start and begin the tasks.
+
+        [ ] save/load config ... might be fun to reflect to registry :)
+        [ ] plug into stager
+                [ ] add rois
+                [ ] push values
+                [ ] stop on close
 
     NOTES
  
@@ -197,18 +222,8 @@ end
             device.createAOChannel(channelName,initialVoltage)
             device.createDOChannel(channelName,initialState)
             device.writeAO(channelName,value);
-            device.writeDO(channelName,value);            
+            device.writeDO(channelName,value);
             device.start();
             device.stop();
             device.isRunning();
-            
-
-            probably also needs to be a construct/destruct...or maybe that
-            can just be part of start/stop.
-
-                init can not be part of start.  Must do 
-                    1. init
-                    2. add channels
-                    3. start
-                    
 %}

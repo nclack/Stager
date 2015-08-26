@@ -1,4 +1,4 @@
-function out=aogui(getRoiNames,getConfigForROIByName,setConfigForROIByName,start,stop,varargin)
+function out=view(getRoiNames,getConfigForROIByName,setConfigForROIByName,start,stop,varargin)
     
     heightHint=25;    
     is_running=false;
