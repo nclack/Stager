@@ -43,6 +43,7 @@ classdef ROISelector < handle
     %% Constructor
     methods
         function obj = ROISelector(hStager)
+            addpath('Guis');
             obj.hStager = hStager;
             obj.hMainGUI = roiSelector();
             
@@ -138,7 +139,7 @@ classdef ROISelector < handle
                 
                 for i=1:length(gdFieldNames)
                     objHandle = gd.(gdFieldNames{i});
-                    if ~isobject(objHandle)
+                    if ~isobject(objHandle)  && ~isstruct(objHandle)
                         if strcmp(get(objHandle,'Type'),'uicontrol') 
                             if(sum(strcmp(get(objHandle,'Style'),{'radiobutton','pushbutton','slider'})))
                                 set(objHandle,'enable',str);

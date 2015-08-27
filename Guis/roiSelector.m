@@ -55,6 +55,11 @@ function roiSelector_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for roiSelector
 handles.output = hObject;
 
+handles.device_controller=devices.gui.controller(...
+    devices.mockDevice(),...
+    @devices.gui.view,...
+    'parent',handles.panelConfigureOutput);
+ 
 % Update handles structure
 guidata(hObject, handles);
 
