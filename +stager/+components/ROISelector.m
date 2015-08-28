@@ -38,6 +38,8 @@ classdef ROISelector < handle
         hSIViewStackBtn;        % Handle of the gui 'View Stack' scanimage panel push button
         
         hLoadTiffBtn;           % Handle of the gui 'Load Tiff' push button 
+        
+        device_controller;
     end
     
     %% Constructor
@@ -45,13 +47,13 @@ classdef ROISelector < handle
         function obj = ROISelector(hStager)
             addpath('Guis');
             obj.hStager = hStager;
-            obj.hMainGUI = roiSelector();
+            obj.hMainGUI = roiSelector();                        
             
             %Add hStager handle to gui
             handles = guidata(obj.hMainGUI);
             handles.hStager = obj.hStager;
             handles.hROISelector = obj;
-            guidata(obj.hMainGUI,handles);
+            guidata(obj.hMainGUI,handles);                        
             
             %Store gui handles
             obj.hDispAx = findobj(obj.hMainGUI,'Tag','ax_tiffDisplay');
@@ -78,6 +80,15 @@ classdef ROISelector < handle
             set(obj.hMainGUI, 'WindowButtonMotionFcn', @(~,~)obj.guiMotionFcn)
             set(obj.hMainGUI, 'WindowButtonDownFcn', @(~,~)obj.guiButtonPrssFcn)
             obj.initialize();
+            obj.updateModel();
+            
+            %Add panel for signal generation
+            obj.device_controller=devices.gui.controller(...
+                devices.mockDevice(),...
+                @devices.gui.view,...
+                'parent',handles.panelConfigureOutput);
+            obj.hStager.addlistener('roiArray','PostSet',@(~,~) disp('roi set changed'));
+            
         end
         
         function initialize(obj)
@@ -185,7 +196,7 @@ classdef ROISelector < handle
             for i=1:length(obj.hStager.roiArray)
                roiPos = obj.hStager.roiArray(i).position;
                if currentPos(1) >= roiPos(1) && currentPos(1) <= roiPos(1)+roiPos(3) && currentPos(2) >= roiPos(2) && currentPos(2) <= roiPos(2)+roiPos(4)
-                    if obj.hStager.roiArray(i).zPlane == obj.selectorZPlane && obj.hStager.roiArray(i).channel == obj.selectorChan
+                    if (obj.hStager.roiArray(i).zPlane == obj.selectorZPlane) && (obj.hStager.roiArray(i).channel == obj.selectorChan)
                         if obj.roiOps.roiDelete == true
                             delete(obj.hStager.roiArray(i).hAnnotation);
                             deleteIdx = i;

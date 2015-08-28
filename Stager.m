@@ -9,7 +9,7 @@
 
 classdef Stager < handle
     %% Public/Private Properties
-    properties
+    properties(SetObservable)
         %Handles
         hServer;                % Handle to sever object
         hFrameListener;         % Handle to 'frameReceived' listener
