@@ -42,6 +42,10 @@ classdef ROISelector < handle
         device_controller;
     end
     
+    properties(Access=private)
+        iroi=0; % used to give ROIs unique names; just an incrementing counter
+    end
+    
     %% Constructor
     methods
         function obj = ROISelector(hStager)
@@ -87,8 +91,16 @@ classdef ROISelector < handle
                 devices.mockDevice(),...
                 @devices.gui.view,...
                 'parent',handles.panelConfigureOutput);
-            obj.hStager.addlistener('roiArray','PostSet',@(~,~) disp('roi set changed'));
-            
+            obj.hStager.addlistener('roiArray','PostSet',@(~,~) onUpdateRoiArray);
+            function onUpdateRoiArray(~,~)
+                %names=arrayfun(@(i) ['roi' num2str(i)],1:length(obj.hStager.roiArray),'UniformOutput',false);
+                names=arrayfun(@(r) r.name,obj.hStager.roiArray,'UniformOutput',false);
+                obj.device_controller.gui.updateROINames(names);
+                if ~isempty(names)
+                    obj.device_controller.gui.selectROIByName(names{end});
+                end
+            end
+                
         end
         
         function initialize(obj)
@@ -221,6 +233,8 @@ classdef ROISelector < handle
             set(hAn,'Position',rect);
             mask = ones(rect(3),rect(4));
             hRoi = stager.stack.Roi(hAn,obj.selectorZPlane,obj.selectorChan,rect,mask);
+            hRoi.name=['roi' num2str(obj.iroi)];
+            obj.iroi=obj.iroi+1;
             obj.hStager.roiArray(end+1) = hRoi;
         end
         

@@ -358,6 +358,9 @@ classdef Stager < handle
                     yMax = pos(2)+pos(4);
                     val  = sum(sum(frame(yMin:yMax,xMin:xMax)));
                     obj.roiArray(i).addVal(val);
+                    obj.device_controller.pushDataForROIByName(...
+                        obj.roiArray(i).name,...
+                        obj.roiArray(i).iValArray);
                 end
             end
         end

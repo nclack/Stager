@@ -15,6 +15,7 @@ classdef Roi < handle
         iValArrayDFOF;          % intensity value (Delta F/F) array; iValArrayDFOF(1) holds the most recent value
         bufferSize = 1000;      % valArray buffer size 
         mask;                   % mxn mask matrix applied to a new frame at coordinates specified by 'position' 
+        name;
     end
     
     %% Constructor
@@ -32,9 +33,8 @@ classdef Roi < handle
     
     %% Public Methods
     methods
-        function addVal(obj,iVal)
-            obj.iValArray = circshift(obj.iValArray,-1);
-            obj.iValArray(1) = iVal;
+        function addVal(obj,iVal)            
+            obj.iValArray = [iVal;obj.iValArray(1:end-1)];
             obj.dFOF();
         end
         

@@ -21,6 +21,7 @@ function out=view(getRoiNames,getConfigForROIByName,setConfigForROIByName,start,
         'notifyConfigUpdatedForROI',@onConfigUpdatedForROI,...
         'notifyIsRunning',@onNotifyIsRunning,...
         'updateROINames',@onUpdateROINames,...
+        'selectROIByName',@onSelectROIByName,...
         'redraw',@draw);
     
     %% interface    
@@ -160,6 +161,16 @@ function out=view(getRoiNames,getConfigForROIByName,setConfigForROIByName,start,
         if isempty(i),i=1; end
         set(findobj(h,'tag','roiSelector'),'Value',i);
         onSelectionChange();
+    end
+
+    function onSelectROIByName(name)
+        i=find(arrayfun(...
+            @(x)strcmp(name,x),...
+            get(findobj(h,'tag','roiSelector'),'String')),...
+            1,'first');
+        if ~isempty(i)
+            set(findobj(h,'tag','roiSelector'),'Value',i);
+        end        
     end
 
     function toggleState()
